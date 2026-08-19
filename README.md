@@ -8,17 +8,28 @@ any project wired up to pull from this repo.
 - `skills/caveman/SKILL.md` — the [`caveman`](https://github.com/JuliusBrussee/caveman) skill,
   vendored verbatim (MIT-licensed). Ultra-compressed output mode, off by default, turned on with
   `/caveman` or a phrase like "caveman mode".
+- `skills/thermo-nuclear-code-quality-review/SKILL.md` — vendored verbatim (MIT-licensed) from
+  [`cursor/plugins`](https://github.com/cursor/plugins). An unusually strict maintainability
+  review (abstraction quality, file size, spaghetti growth). Explicit-invoke only; `bob-the-builder`
+  runs it on its own diff before stopping (see `agents/bob-the-builder.md`, "Finishing").
+- `skills/{wayfinder,grill-with-docs,grilling,domain-modeling,research,prototype}/` — vendored
+  verbatim (MIT-licensed) from [`mattpocock/skills`](https://github.com/mattpocock/skills).
+  Planning skills for the main session — see `CLAUDE.md`'s "Planning skills" section for which are
+  explicit-invoke-only front doors (`wayfinder`, `grill-with-docs`) versus standalone building
+  blocks that can auto-trigger on their own (the other four).
 - `agents/bob-the-builder.md` — a generic coding subagent. Implements against an approved plan,
-  runs tests, does not review its own work or push.
+  runs tests, runs a `thermo-nuclear-code-quality-review` self-check, does not otherwise review
+  its own work or push.
 - `agents/felix-the-fixer.md` — a generic code-review subagent. Reviews a diff for correctness
   bugs and behavior-preserving simplifications; never edits.
 - `CLAUDE.md` — synced to `~/.claude/CLAUDE.md`. Documents the opt-in
   `bob-the-builder` ↔ `felix-the-fixer` loop protocol (3-round cap, root-cause-vs-patch check,
-  notes-ownership boundary) and that caveman is available but off by default for the main
-  session.
+  notes-ownership boundary), the planning skills, and that caveman is available but off by
+  default for the main session.
 - `install.sh` — does the actual sync. Safe to re-run: `skills/` and `agents/` are copied
-  wholesale (this repo owns that namespace outright), `~/.claude/CLAUDE.md` is merged via a
-  marked block so any unrelated content already there survives.
+  wholesale (this repo owns that namespace outright — every directory under `skills/` syncs, not
+  just caveman), `~/.claude/CLAUDE.md` is merged via a marked block so any unrelated content
+  already there survives.
 
 ## How the sync works
 

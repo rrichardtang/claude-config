@@ -12,8 +12,11 @@ END='<!-- claude-config:end -->'
 
 mkdir -p "$DEST/skills" "$DEST/agents"
 
-rm -rf "$DEST/skills/caveman"
-cp -r "$SRC/skills/caveman" "$DEST/skills/caveman"
+for skill in "$SRC"/skills/*/; do
+  name="$(basename "$skill")"
+  rm -rf "$DEST/skills/$name"
+  cp -r "$skill" "$DEST/skills/$name"
+done
 cp "$SRC/agents/bob-the-builder.md" "$DEST/agents/bob-the-builder.md"
 cp "$SRC/agents/felix-the-fixer.md" "$DEST/agents/felix-the-fixer.md"
 
@@ -34,4 +37,5 @@ else
   { [ -f "$DEST/CLAUDE.md" ] && printf '\n'; printf '%s\n' "$BLOCK"; } >> "$DEST/CLAUDE.md"
 fi
 
-echo "claude-config: synced caveman skill, bob-the-builder, felix-the-fixer, and CLAUDE.md into $DEST"
+skill_count=$(find "$SRC/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+echo "claude-config: synced $skill_count skills, bob-the-builder, felix-the-fixer, and CLAUDE.md into $DEST"

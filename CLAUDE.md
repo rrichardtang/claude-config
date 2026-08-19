@@ -32,6 +32,11 @@ When running it:
 - **After round 3**, if `felix-the-fixer` still finds issues: stop. Do not start a 4th round
   automatically. Summarize what's still wrong and ask how to proceed.
 
+`bob-the-builder` also runs a `thermo-nuclear-code-quality-review` self-check on its own diff
+before stopping (its own instructions, "Finishing") — a structural pass (file size, spaghetti
+conditionals, thin wrappers), not a substitute for `felix-the-fixer`'s independent correctness and
+simplification review.
+
 **Notes boundary:** if the repo you're in has a living-notes convention (a `PROJECT_NOTES/`
 directory or equivalent), only the orchestrating (main) agent reads and writes it. Extract just
 the task-relevant slice — the specific bug, decision, or preference that matters for this task —
@@ -41,3 +46,27 @@ notes. `bob-the-builder` and `felix-the-fixer` each keep their own smaller, role
 instead — `.claude/agent-notes/bob.md` and `.claude/agent-notes/felix.md` in whatever repo
 they're working in — for things future rounds of *that specific role* should know, separate from
 the project's higher-level notes.
+
+## Planning skills (opt-in)
+
+`wayfinder` and `grill-with-docs` are front doors for planning code changes in the main session —
+**explicit-invoke only** (`disable-model-invocation: true`), so neither fires on its own; call
+`Skill(wayfinder)` or `Skill(grill-with-docs)` by name. `grill-with-docs` sharpens a plan within
+one session (interview via `grilling`, glossary/ADR capture via `domain-modeling`). `wayfinder`
+is for work too large for one session: it charts a shared map of decision tickets on the repo's
+issue tracker (falling back to local markdown) and works them one at a time — see
+`skills/wayfinder/SKILL.md` for the full protocol before invoking it, its own body is denser than
+this summary should try to restate.
+
+Their building blocks are separate, standalone skills, each still available on its own:
+- `grilling` — the interview primitive; auto-triggers on "grill" phrasing, not gated like the two
+  above.
+- `domain-modeling` — builds/sharpens a project's `CONTEXT.md` glossary and ADRs; can auto-trigger
+  when terminology is being discussed.
+- `research` — delegates a documentation/API question to a background agent; can auto-trigger.
+- `prototype` — throwaway code to answer a design question (state-model logic or UI shape); can
+  auto-trigger.
+
+Unlike `wayfinder`/`grill-with-docs`, these four are not `disable-model-invocation`-gated — that's
+upstream's design (they're useful standalone, e.g. "grill me about this" without going through
+wayfinder), not something layered on here.
