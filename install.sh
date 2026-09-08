@@ -42,12 +42,22 @@ fi
 # Self-refresh: install the bootstrap and register it as a user-level SessionStart hook, so every
 # future session in every project re-runs this sync before doing any work. Only this repo's own
 # entry is rewritten, leaving any other SessionStart hooks the user has registered untouched.
-cp "$SRC/hooks/session-start.sh" "$DEST/session-start.sh"
-chmod +x "$DEST/session-start.sh"
+# Write via a temp file rather than over the destination: session-start.sh is the script bash is
+# executing right now, and bash reads a script lazily by byte offset.
+cp "$SRC/hooks/session-start.sh" "$DEST/session-start.sh.tmp"
+chmod +x "$DEST/session-start.sh.tmp"
+mv "$DEST/session-start.sh.tmp" "$DEST/session-start.sh"
+
+if ! command -v jq >/dev/null; then
+  echo "claude-config: jq not found, skipping self-refresh hook registration" >&2
+  exit 0
+fi
 
 SETTINGS="$DEST/settings.json"
 HOOK_CMD="bash \"$DEST/session-start.sh\""
-[ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"
+# -s not -f: a zero-byte settings.json would leave jq emitting nothing at exit 0, silently
+# registering no hook at all.
+[ -s "$SETTINGS" ] || echo '{}' > "$SETTINGS"
 jq --arg cmd "$HOOK_CMD" '
   .hooks.SessionStart = (
     ((.hooks.SessionStart // []) | map(select([.hooks[]?.command] | index($cmd) | not)))
