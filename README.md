@@ -17,6 +17,9 @@ any project wired up to pull from this repo.
   Planning skills for the main session — see `CLAUDE.md`'s "Planning skills" section for which are
   explicit-invoke-only front doors (`wayfinder`, `grill-with-docs`) versus standalone building
   blocks that can auto-trigger on their own (the other four).
+- `skills/ponytail/SKILL.md` — the [`ponytail`](https://github.com/nikvdp/ponytail) skill. Forces the
+  simplest solution that works (YAGNI, stdlib before custom code, shortest working diff). Listed
+  in the prompt so it can auto-trigger on "yagni", "be lazy", "over-engineered" and the like.
 - `agents/bob-the-builder.md` — a generic coding subagent. Implements against an approved plan,
   runs tests, runs a `thermo-nuclear-code-quality-review` self-check, does not otherwise review
   its own work or push.
@@ -26,25 +29,52 @@ any project wired up to pull from this repo.
   `bob-the-builder` ↔ `felix-the-fixer` loop protocol (3-round cap, root-cause-vs-patch check,
   notes-ownership boundary), the planning skills, and that caveman is available but off by
   default for the main session.
+- `hooks/session-start.sh` — the bootstrap: clone-or-update this repo's cache, then run
+  `install.sh`. `install.sh` copies it to `~/.claude/session-start.sh` and registers it as a
+  user-level `SessionStart` hook, which is what makes the sync self-refreshing. Also committed
+  here so a project can vendor it as its own project hook (see "How the sync works").
 - `install.sh` — does the actual sync. Safe to re-run: `skills/` and `agents/` are copied
   wholesale (this repo owns that namespace outright — every directory under `skills/` syncs, not
   just caveman), `~/.claude/CLAUDE.md` is merged via a marked block so any unrelated content
-  already there survives.
+  already there survives, and `~/.claude/settings.json` has only this repo's own `SessionStart`
+  entry replaced, leaving other hooks and settings alone.
+
+## Design skills live on the claude.ai account, not here
+
+The frontend design/image-direction skills (`design-taste-frontend`, `imagegen-frontend-web`,
+`brandkit`, and friends) are deliberately **not** in this repo. They are uploaded as claude.ai
+account skills instead, because this repo's sync target (`~/.claude/skills/`) is not read by a
+cloud session's `/` menu, and those skills carry `disable-model-invocation: true` — which blocks
+the `Skill` tool as well as auto-triggering, leaving the `/` menu as their only entry point. An
+account skill reaches every repo, both local and cloud sessions, and shows up in that menu.
+
+The same reasoning applies to anything else gated this way: gate it, and it has to live somewhere
+the `/` menu can see.
 
 ## How the sync works
 
-Nothing here installs itself. Each project that wants this config carries a `SessionStart` hook
-(in that project's `.claude/settings.json`) that clones-or-pulls this repo and runs
-`install.sh` at the start of every session, before the agent starts working. That's what makes
-"global" actually durable in an ephemeral container — the repo is the source of truth, and every
-session re-materializes `~/.claude/` from it.
+`install.sh` registers itself. It copies `hooks/session-start.sh` to `~/.claude/session-start.sh`
+and adds a user-level `SessionStart` hook pointing at it, so from then on **every session in every
+project** re-clones-or-pulls this repo and re-runs the sync before the agent starts working.
+Install once, anywhere, and the config follows you — including into projects that know nothing
+about this repo.
+
+The one thing that hook cannot do is bootstrap itself where `~/.claude/` does not survive between
+sessions — Claude Code on the web, where each session gets a fresh container. There the
+user-level hook is gone by the time it would run, so something inside the repo has to do the first
+sync. A project that gets used from the web therefore also carries its own copy of the bootstrap
+as a project hook (`.claude/hooks/session-start.sh` + a `SessionStart` entry in that project's
+`.claude/settings.json`); `rrichardtang/guideme` is the working example. Both hooks firing in the
+same session is harmless — `install.sh` is idempotent and `flock`-serialized, so the second run is
+one shallow fetch.
 
 ## Adding this to a new project
 
-Add a `SessionStart` hook to the project's `.claude/settings.json` that clones (or pulls, if
-already cloned to a stable cache path) `rrichardtang/claude-config` and runs its `install.sh`.
-See `rrichardtang/guideme`'s `.claude/settings.json` for a working example, or use Claude Code's
-`session-start-hook` skill to wire up a new one.
+Nothing to do for local sessions — the user-level hook already covers every project on the
+machine. Only if the project will be used from Claude Code on the web does it need its own
+bootstrap: copy `hooks/session-start.sh` into the project's `.claude/hooks/` and add a
+`SessionStart` hook running it in that project's `.claude/settings.json`, mirroring
+`rrichardtang/guideme`.
 
 ## Editing
 

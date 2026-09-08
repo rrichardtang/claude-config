@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Syncs this repo's skill/agents/CLAUDE.md into ~/.claude/. Safe to re-run: skills and agents
-# are copied wholesale (they live in a namespace this repo owns outright), but ~/.claude/CLAUDE.md
-# is user-owned and may carry content unrelated to this repo, so it's merged via a marked block
-# instead of being overwritten.
+# Syncs this repo's skills/agents/CLAUDE.md into ~/.claude/, and wires itself to re-run on every
+# session start so the sync is self-refreshing across every project. Safe to re-run: skills and
+# agents are copied wholesale (they live in a namespace this repo owns outright), but
+# ~/.claude/CLAUDE.md is user-owned and may carry content unrelated to this repo, so it's merged
+# via a marked block instead of being overwritten, and ~/.claude/settings.json is edited by
+# replacing only this repo's own SessionStart entry.
 set -euo pipefail
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,5 +39,23 @@ else
   { [ -f "$DEST/CLAUDE.md" ] && printf '\n'; printf '%s\n' "$BLOCK"; } >> "$DEST/CLAUDE.md"
 fi
 
+# Self-refresh: install the bootstrap and register it as a user-level SessionStart hook, so every
+# future session in every project re-runs this sync before doing any work. Only this repo's own
+# entry is rewritten, leaving any other SessionStart hooks the user has registered untouched.
+cp "$SRC/hooks/session-start.sh" "$DEST/session-start.sh"
+chmod +x "$DEST/session-start.sh"
+
+SETTINGS="$DEST/settings.json"
+HOOK_CMD="bash \"$DEST/session-start.sh\""
+[ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"
+jq --arg cmd "$HOOK_CMD" '
+  .hooks.SessionStart = (
+    ((.hooks.SessionStart // []) | map(select([.hooks[]?.command] | index($cmd) | not)))
+    + [{matcher: "startup|resume", hooks: [{type: "command", command: $cmd}]}]
+  )
+' "$SETTINGS" > "$SETTINGS.tmp"
+mv "$SETTINGS.tmp" "$SETTINGS"
+
 skill_count=$(find "$SRC/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
 echo "claude-config: synced $skill_count skills, bob-the-builder, felix-the-fixer, and CLAUDE.md into $DEST"
+echo "claude-config: self-refresh hook registered in $SETTINGS"
