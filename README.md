@@ -10,8 +10,9 @@ any project wired up to pull from this repo.
   `/caveman` or a phrase like "caveman mode".
 - `skills/thermo-nuclear-code-quality-review/SKILL.md` — vendored verbatim (MIT-licensed) from
   [`cursor/plugins`](https://github.com/cursor/plugins). An unusually strict maintainability
-  review (abstraction quality, file size, spaghetti growth). Explicit-invoke only; `bob-the-builder`
-  runs it on its own diff before stopping (see `agents/bob-the-builder.md`, "Finishing").
+  review (abstraction quality, file size, spaghetti growth). Intentionally left model-invocable —
+  `bob-the-builder` calls it on its own diff before stopping (see `agents/bob-the-builder.md`,
+  "Finishing"), and `disable-model-invocation` would block exactly that call.
 - `skills/{wayfinder,grill-with-docs,grilling,domain-modeling,research,prototype}/` — vendored
   verbatim (MIT-licensed) from [`mattpocock/skills`](https://github.com/mattpocock/skills).
   Planning skills for the main session — see `CLAUDE.md`'s "Planning skills" section for which are
