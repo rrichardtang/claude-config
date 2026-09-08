@@ -8,9 +8,17 @@ This file loads in every session, on every project, before that project's own `C
 The `caveman` skill (ultra-compressed output, ~65% token cut) is installed and available via
 `/caveman` or by saying "caveman mode" / "less tokens" / etc. **It is off by default in
 interactive sessions** — nothing here turns it on automatically. `bob-the-builder` and
-`felix-the-fixer` (below) each turn it on for themselves as their first action, since they're
-the token/latency-sensitive part of this setup; the main session stays normal prose unless you
-ask for it directly.
+`felix-the-fixer` (below) each **preload** it via the `skills:` field in their frontmatter, since
+they're the token/latency-sensitive part of this setup; the main session stays normal prose unless
+you ask for it directly.
+
+Preloading (`skills:` in a subagent's frontmatter) injects a skill's full body into that
+subagent's context at startup, which is stronger than letting it call `Skill(...)` mid-run: the
+skill shapes the work from the first token instead of after the agent has already decided how to
+approach it, and it cannot be skipped. `bob-the-builder` preloads `ponytail` for exactly this
+reason — clean code comes from constraints applied while writing, not from an audit afterwards.
+Note that a skill marked `disable-model-invocation: true` can be neither preloaded nor invoked by
+an agent; that flag makes a skill user-only, so never put it on one an agent is meant to use.
 
 ## Coding ↔ Review Loop (opt-in)
 
