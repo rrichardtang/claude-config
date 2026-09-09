@@ -22,13 +22,42 @@ done
 cp "$SRC/agents/bob-the-builder.md" "$DEST/agents/bob-the-builder.md"
 cp "$SRC/agents/felix-the-fixer.md" "$DEST/agents/felix-the-fixer.md"
 
+# Self-refresh: install the bootstrap and register it as a user-level SessionStart hook, so every
+# future session in every project re-runs this sync before doing any work. Only this repo's own
+# entry is rewritten, leaving any other SessionStart hooks the user has registered untouched.
+# Write via a temp file rather than over the destination: session-start.sh is the script bash is
+# executing right now, and bash reads a script lazily by byte offset.
+cp "$SRC/hooks/session-start.sh" "$DEST/session-start.sh.tmp"
+chmod +x "$DEST/session-start.sh.tmp"
+mv "$DEST/session-start.sh.tmp" "$DEST/session-start.sh"
+
+if command -v jq >/dev/null; then
+  SETTINGS="$DEST/settings.json"
+  HOOK_CMD="bash \"$DEST/session-start.sh\""
+  # -s not -f: a zero-byte settings.json would leave jq emitting nothing at exit 0, silently
+  # registering no hook at all.
+  [ -s "$SETTINGS" ] || echo '{}' > "$SETTINGS"
+  jq --arg cmd "$HOOK_CMD" '
+    .hooks.SessionStart = (
+      ((.hooks.SessionStart // []) | map(select([.hooks[]?.command] | index($cmd) | not)))
+      + [{matcher: "startup|resume", hooks: [{type: "command", command: $cmd}]}]
+    )
+  ' "$SETTINGS" > "$SETTINGS.tmp"
+  mv "$SETTINGS.tmp" "$SETTINGS"
+  echo "claude-config: self-refresh hook registered in $SETTINGS"
+else
+  echo "claude-config: jq not found, skipping self-refresh hook registration" >&2
+fi
+
 BLOCK=$(printf '%s\n%s\n%s\n' "$START" "$(cat "$SRC/CLAUDE.md")" "$END")
 
 if [ -f "$DEST/CLAUDE.md" ] && grep -qF "$START" "$DEST/CLAUDE.md"; then
   # Replace the existing managed block in place, leaving anything else in the file untouched.
-  awk -v start="$START" -v end="$END" -v block="$BLOCK" '
-    $0 == start { print block; skipping = 1; next }
-    $0 == end && skipping { skipping = 0; next }
+  # Block passes through the environment, not -v: BSD awk (macOS) rejects a literal newline in a
+  # -v assignment, and the block is multi-line by construction. ENVIRON is POSIX, so both awks read it.
+  START="$START" END="$END" BLOCK="$BLOCK" awk '
+    $0 == ENVIRON["START"] { print ENVIRON["BLOCK"]; skipping = 1; next }
+    $0 == ENVIRON["END"] && skipping { skipping = 0; next }
     skipping { next }
     { print }
   ' "$DEST/CLAUDE.md" > "$DEST/CLAUDE.md.tmp"
@@ -39,33 +68,5 @@ else
   { [ -f "$DEST/CLAUDE.md" ] && printf '\n'; printf '%s\n' "$BLOCK"; } >> "$DEST/CLAUDE.md"
 fi
 
-# Self-refresh: install the bootstrap and register it as a user-level SessionStart hook, so every
-# future session in every project re-runs this sync before doing any work. Only this repo's own
-# entry is rewritten, leaving any other SessionStart hooks the user has registered untouched.
-# Write via a temp file rather than over the destination: session-start.sh is the script bash is
-# executing right now, and bash reads a script lazily by byte offset.
-cp "$SRC/hooks/session-start.sh" "$DEST/session-start.sh.tmp"
-chmod +x "$DEST/session-start.sh.tmp"
-mv "$DEST/session-start.sh.tmp" "$DEST/session-start.sh"
-
-if ! command -v jq >/dev/null; then
-  echo "claude-config: jq not found, skipping self-refresh hook registration" >&2
-  exit 0
-fi
-
-SETTINGS="$DEST/settings.json"
-HOOK_CMD="bash \"$DEST/session-start.sh\""
-# -s not -f: a zero-byte settings.json would leave jq emitting nothing at exit 0, silently
-# registering no hook at all.
-[ -s "$SETTINGS" ] || echo '{}' > "$SETTINGS"
-jq --arg cmd "$HOOK_CMD" '
-  .hooks.SessionStart = (
-    ((.hooks.SessionStart // []) | map(select([.hooks[]?.command] | index($cmd) | not)))
-    + [{matcher: "startup|resume", hooks: [{type: "command", command: $cmd}]}]
-  )
-' "$SETTINGS" > "$SETTINGS.tmp"
-mv "$SETTINGS.tmp" "$SETTINGS"
-
 skill_count=$(find "$SRC/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
 echo "claude-config: synced $skill_count skills, bob-the-builder, felix-the-fixer, and CLAUDE.md into $DEST"
-echo "claude-config: self-refresh hook registered in $SETTINGS"
