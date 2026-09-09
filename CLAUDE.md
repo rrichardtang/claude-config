@@ -8,9 +8,17 @@ This file loads in every session, on every project, before that project's own `C
 The `caveman` skill (ultra-compressed output, ~65% token cut) is installed and available via
 `/caveman` or by saying "caveman mode" / "less tokens" / etc. **It is off by default in
 interactive sessions** — nothing here turns it on automatically. `bob-the-builder` and
-`felix-the-fixer` (below) each turn it on for themselves as their first action, since they're
-the token/latency-sensitive part of this setup; the main session stays normal prose unless you
-ask for it directly.
+`felix-the-fixer` (below) each **preload** it via the `skills:` field in their frontmatter, since
+they're the token/latency-sensitive part of this setup; the main session stays normal prose unless
+you ask for it directly.
+
+Preloading (`skills:` in a subagent's frontmatter) injects a skill's full body into that
+subagent's context at startup, which is stronger than letting it call `Skill(...)` mid-run: the
+skill shapes the work from the first token instead of after the agent has already decided how to
+approach it, and it cannot be skipped. `bob-the-builder` preloads `ponytail` for exactly this
+reason — clean code comes from constraints applied while writing, not from an audit afterwards.
+Note that a skill marked `disable-model-invocation: true` can be neither preloaded nor invoked by
+an agent; that flag makes a skill user-only, so never put it on one an agent is meant to use.
 
 ## Coding ↔ Review Loop (opt-in)
 
@@ -33,7 +41,9 @@ When running it:
   automatically. Summarize what's still wrong and ask how to proceed.
 
 `bob-the-builder` also runs a `thermo-nuclear-code-quality-review` self-check on its own diff
-before stopping (its own instructions, "Finishing") — a structural pass (file size, spaghetti
+before stopping (its own instructions, "Finishing"). That skill is deliberately **not** gated with
+`disable-model-invocation`, unlike the planning front doors: its consumer is an agent, not a
+person, and the flag would block the `Skill` call bob depends on. The self-check is a structural pass (file size, spaghetti
 conditionals, thin wrappers), not a substitute for `felix-the-fixer`'s independent correctness and
 simplification review.
 
@@ -50,13 +60,14 @@ the project's higher-level notes.
 ## Planning skills (opt-in)
 
 `wayfinder` and `grill-with-docs` are front doors for planning code changes in the main session —
-**explicit-invoke only** (`disable-model-invocation: true`), so neither fires on its own; call
-`Skill(wayfinder)` or `Skill(grill-with-docs)` by name. `grill-with-docs` sharpens a plan within
-one session (interview via `grilling`, glossary/ADR capture via `domain-modeling`). `wayfinder`
-is for work too large for one session: it charts a shared map of decision tickets on the repo's
-issue tracker (falling back to local markdown) and works them one at a time — see
-`skills/wayfinder/SKILL.md` for the full protocol before invoking it, its own body is denser than
-this summary should try to restate.
+**explicit-invoke only** (`disable-model-invocation: true`), so neither fires on its own. That flag
+blocks the `Skill` tool as well as auto-triggering, so **you** start them by typing `/wayfinder` or
+`/grill-with-docs`; the agent cannot reach them, and asking it to is a dead end.
+`grill-with-docs` sharpens a plan within one session (interview via `grilling`, glossary/ADR
+capture via `domain-modeling`). `wayfinder` is for work too large for one session: it charts a
+shared map of decision tickets on the repo's issue tracker (falling back to local markdown) and
+works them one at a time — its body is denser than this summary should try to restate, and the
+agent can read `~/.claude/skills/wayfinder/SKILL.md` directly for the full protocol.
 
 Their building blocks are separate, standalone skills, each still available on its own:
 - `grilling` — the interview primitive; auto-triggers on "grill" phrasing, not gated like the two
