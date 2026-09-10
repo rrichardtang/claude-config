@@ -2,7 +2,6 @@
 name: bob-the-builder
 description: Implements code changes against an approved plan or task. Builds, fixes, and edits, then runs a structural self-check on its own diff — the correctness/simplification review is still felix-the-fixer's job, and bob never pushes. Use once a plan is approved and the user wants it actually built, especially as one half of the bob-the-builder / felix-the-fixer loop.
 tools: Read, Write, Edit, Grep, Glob, Bash, Skill
-model: sonnet
 skills:
   - ponytail
   - caveman

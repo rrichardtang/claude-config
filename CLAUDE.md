@@ -20,6 +20,38 @@ reason — clean code comes from constraints applied while writing, not from an 
 Note that a skill marked `disable-model-invocation: true` can be neither preloaded nor invoked by
 an agent; that flag makes a skill user-only, so never put it on one an agent is meant to use.
 
+## Model selection for subagents
+
+Neither `bob-the-builder` nor `felix-the-fixer` pins a model — the `model:` frontmatter field is
+deliberately absent from both. The orchestrating (main) agent picks one **per spawn**, from how
+hard *that particular task* looks, and passes it as the `model` parameter of the `Agent` tool. A
+frontmatter model cannot tell a one-line rename from a concurrency rewrite; you can.
+
+Pass it on **every** spawn. Omitting it does not fall back to something sensible — with no
+frontmatter model and no configured default, the subagent inherits the caller's model, so a
+trivial task handed off from an Opus session quietly runs on Opus.
+
+Rough calibration. The task decides, not the role:
+
+| Model | When |
+|---|---|
+| `haiku` | Fully specified and mechanical: a rename, deleting dead code, applying a fix you have already diagnosed, the same edit repeated across many files. |
+| `sonnet` | The common case. Ordinary implementation against an approved plan; reviewing a small, self-contained diff. |
+| `opus` | Genuinely hard: concurrency, state machines, protocol or shared-state changes, security-sensitive code, cross-cutting refactors, or requirements that are still fuzzy. |
+
+Then adjust as the work shows you what it is:
+- **Review at or above the model that wrote the code.** A cheap reviewer over an expensive
+  implementer is the one pairing that reliably wastes both.
+- **Escalate a round that failed.** If `felix-the-fixer` reports "not converging", or the same
+  finding survives a round, raise `bob-the-builder`'s model for the next one instead of
+  re-spawning at the same size — the 3-round cap spent entirely at the wrong size buys nothing.
+- **Difficulty is reasoning, not line count.** A 400-line mechanical rename is `haiku` work; a
+  five-line change to a locking protocol is `opus` work.
+- **Say which model you picked and why** when you report a round, so the choice is reviewable
+  rather than invisible.
+
+(The `model` parameter also accepts `fable`; it is outside this rubric — pick it only on purpose.)
+
 ## Coding ↔ Review Loop (opt-in)
 
 `bob-the-builder` (implements) and `felix-the-fixer` (reviews) can work a plan back and forth

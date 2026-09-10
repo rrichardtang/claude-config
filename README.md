@@ -26,6 +26,9 @@ any project wired up to pull from this repo.
   its own work or push.
 - `agents/felix-the-fixer.md` — a generic code-review subagent. Reviews a diff for correctness
   bugs and behavior-preserving simplifications; never edits.
+- Neither agent pins a `model:` in its frontmatter. The orchestrating session chooses one per
+  spawn from the difficulty of the task at hand — see `CLAUDE.md`'s "Model selection for
+  subagents" for the calibration and the escalation rules.
 - `CLAUDE.md` — synced to `~/.claude/CLAUDE.md`. Documents the opt-in
   `bob-the-builder` ↔ `felix-the-fixer` loop protocol (3-round cap, root-cause-vs-patch check,
   notes-ownership boundary), the planning skills, and that caveman is available but off by
