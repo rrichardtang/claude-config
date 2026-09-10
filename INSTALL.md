@@ -7,6 +7,26 @@ Hand this to a session with:
 
 > Read https://raw.githubusercontent.com/rrichardtang/claude-config/main/INSTALL.md and follow it.
 
+## First: which environment is this?
+
+```bash
+[ -n "${CLAUDE_CODE_REMOTE:-}" ] && echo "ephemeral container" || echo "persistent machine"
+```
+
+This decides where the effort goes, not whether a step is safe:
+
+- **persistent machine** (local CLI) — step 1 installs permanently, for every repo on the machine.
+  Step 2 only matters if this repo will also be opened from the web.
+- **ephemeral container** (Claude Code on the web) — `~/.claude/` is discarded when the container
+  is reclaimed, so **step 1 lasts only for this session**. It is step 2, committed to the
+  repository, that makes the harness reach future sessions here. Do step 2; treat step 1 as a
+  convenience for the current conversation only.
+
+The check is a heuristic on an undocumented variable, so do not over-trust it. Getting it wrong is
+cheap in both directions: step 1 in a container is harmless but temporary, and step 2 on a
+local-only repo just adds two committed files whose hook duplicates work the user-level hook
+already does. When genuinely unsure, do both and say which you assumed.
+
 ## What gets installed
 
 | Component | Lands in | Scope |
@@ -125,6 +145,31 @@ hook entries to `.claude/settings.json`:
 
 Worth adopting on any project you actually ship. Skip on throwaways — the gate is deliberately
 hard to satisfy, and it will block you.
+
+## How the pieces fit
+
+**There is no orchestrator agent, and that is deliberate.** `agents/` holds exactly two
+definitions, `bob-the-builder` and `felix-the-fixer`. The orchestrator is the **main session** —
+the conversation you are in — and its instructions are the managed block installed into
+`~/.claude/CLAUDE.md` by step 1.
+
+It has to work that way: neither subagent has `Agent` in its `tools` list, so neither can spawn
+anything. Only the main session can spawn both halves, carry findings between rounds (subagents
+are stateless per spawn and remember nothing of earlier ones), enforce the 3-round cap, and choose
+each subagent's model. An orchestrator subagent could do none of it.
+
+So "install the orchestration instruction" is not a separate step — step 1 syncs the two agents
+and the protocol together.
+
+**Neither agent pins a model.** The `model:` frontmatter field is absent from both on purpose, so
+the orchestrator can size each spawn to the task. This has a sharp edge: with no frontmatter model
+and no configured default, a subagent **inherits the caller's model**. Omitting the `model`
+parameter is therefore not a neutral default — a one-line rename delegated from an Opus session
+quietly runs on Opus. Pass `model` on every spawn. The rubric is in `~/.claude/CLAUDE.md` under
+"Model selection for subagents".
+
+**Nothing enforces the loop.** The protocol describes it; only the optional push gate in step 3
+makes any part of it mandatory.
 
 ## Verifying the whole thing
 
