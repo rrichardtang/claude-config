@@ -52,6 +52,16 @@ account skill reaches every repo, both local and cloud sessions, and shows up in
 The same reasoning applies to anything else gated this way: gate it, and it has to live somewhere
 the `/` menu can see.
 
+## Installing on a new machine or repository
+
+`INSTALL.md` is written for a Claude Code session to execute. Point one at it:
+
+> Read https://raw.githubusercontent.com/rrichardtang/claude-config/main/INSTALL.md and follow it.
+
+It covers the machine-level install (once per machine, after which the hook keeps itself current),
+the repository-level bootstrap needed only for projects opened from Claude Code on the web, and the
+optional push gate.
+
 ## How the sync works
 
 `install.sh` registers itself. It copies `hooks/session-start.sh` to `~/.claude/session-start.sh`
