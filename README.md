@@ -6,7 +6,7 @@ the protocol for running them, the skills they use, and opt-in guardrails for pr
 | Plugin | What it bundles | Install it |
 |---|---|---|
 | `harness` | `bob-the-builder` and `felix-the-fixer` subagents, the `protocol` skill (how to run them and pick their models), and the `caveman`, `ponytail`, `thermo-nuclear-code-quality-review`, `wayfinder`, `grill-with-docs`, `grilling`, `domain-modeling`, `research` and `prototype` skills | Everywhere you work |
-| `harness-gates` | A `PreToolUse` hook that holds `git push` until `felix-the-fixer` has reviewed HEAD, and a `PostToolUse` hook that flags TODO markers and placeholder stubs as they are written. Depends on `harness`, so the reviewer always comes with the gate | Per project, on projects you ship |
+| `harness-gates` | A `PreToolUse` hook that holds `git push` until `felix-the-fixer` has reviewed HEAD, and a `PostToolUse` hook that flags TODO markers and placeholder stubs as they are written. Wired into a project as repository hooks. It asks for `harness:felix-the-fixer`, so install `harness` wherever that project is opened | Per project, on projects you ship |
 
 Everything is namespaced by plugin: `/harness:wayfinder`, subagent `harness:felix-the-fixer`.
 

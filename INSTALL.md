@@ -60,7 +60,9 @@ claude plugin marketplace add rrichardtang/claude-config || true
 claude plugin install harness@rrichardtang || true
 ```
 
-The environment is cached for about seven days, so a new plugin version reaches web sessions when
+`|| true` keeps a network blip from failing the session's start (a setup script that exits
+non-zero stops the session), so check the result rather than trusting the script. The
+environment is cached for about seven days, so a new plugin version reaches web sessions when
 the cache rebuilds; editing the script rebuilds it at once. Verify in a new web session:
 `claude plugin list` shows `harness@rrichardtang`.
 
@@ -117,7 +119,8 @@ If the project's `.gitignore` ignores `.claude/`, add exceptions so both commit:
 
 Check with `git check-ignore -v .claude/settings.json .claude/vendor/harness-gates/scripts/push-gate.sh`
 (no output means both will commit), then commit. Don't also enable `harness-gates@rrichardtang`
-in this project, or the gate runs twice. To upgrade, re-run `vendor.sh` from a newer checkout
+in this project, or the gate runs twice. The copy's own `hooks/hooks.json` is unused here; the
+project's `.claude/settings.json` is the wiring. To upgrade, re-run `vendor.sh` from a newer checkout
 and commit; the diff is the upgrade.
 
 The gate blocks a `git push` until a receipt for the exact HEAD commit exists. The block message
