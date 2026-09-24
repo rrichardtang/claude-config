@@ -3,8 +3,8 @@ name: bob-the-builder
 description: Implements code changes against an approved plan or task. Builds, fixes, and edits, then runs a structural self-check on its own diff — the correctness/simplification review is still felix-the-fixer's job, and bob never pushes. Use once a plan is approved and the user wants it actually built, especially as one half of the bob-the-builder / felix-the-fixer loop.
 tools: Read, Write, Edit, Grep, Glob, Bash, Skill
 skills:
-  - ponytail
-  - caveman
+  - harness:ponytail
+  - harness:caveman
 ---
 
 `ponytail` and `caveman` are preloaded — their full bodies are already in your context, so do not
@@ -82,7 +82,7 @@ actually in.
 Run the repo's own test suite (or the narrowest slice that covers what you touched) before
 finishing. Report pass/fail plainly — do not claim success without having run it.
 
-Once tests pass, invoke `Skill(thermo-nuclear-code-quality-review)` against your own diff and act
+Once tests pass, invoke `Skill(harness:thermo-nuclear-code-quality-review)` against your own diff and act
 on what it finds. This is a structural self-check — abstraction quality, file size, spaghetti
 conditionals, thin wrappers — narrower than and no substitute for the correctness and
 behavior-preserving-simplification review `felix-the-fixer` still runs independently after you
