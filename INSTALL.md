@@ -107,7 +107,7 @@ bare copies don't sit beside the namespaced plugin:
 rm -rf ~/.claude/agents/bob-the-builder.md ~/.claude/agents/felix-the-fixer.md ~/.claude/session-start.sh
 for s in caveman domain-modeling grill-with-docs grilling ponytail prototype research \
          thermo-nuclear-code-quality-review wayfinder; do rm -rf ~/.claude/skills/$s; done
-jq '.hooks.SessionStart |= map(select([.hooks[]?.command] | any(test("session-start.sh")) | not))' \
+jq '.hooks.SessionStart |= (. // [] | map(select([.hooks[]?.command] | any(test("session-start.sh")) | not)))' \
   ~/.claude/settings.json > ~/.claude/settings.json.tmp && mv ~/.claude/settings.json.tmp ~/.claude/settings.json
 ```
 

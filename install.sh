@@ -60,7 +60,7 @@ fi
 
 # The protocol skill minus its frontmatter, with the plugin root pointed at the copies above.
 PROTOCOL=$(awk 'NR == 1 && $0 == "---" { skipping = 1; next } skipping && $0 == "---" { skipping = 0; next } !skipping' \
-  "$PLUGIN/skills/protocol/SKILL.md" | sed "s|\${CLAUDE_PLUGIN_ROOT}|$DEST|g")
+  "$PLUGIN/skills/protocol/SKILL.md" | sed "s|\${CLAUDE_PLUGIN_ROOT}|$(printf '%s' "$DEST" | sed 's/[&|\\]/\\&/g')|g")
 BLOCK=$(printf '%s\n%s\n%s\n' "$START" "$PROTOCOL" "$END")
 
 if [ -f "$DEST/CLAUDE.md" ] && grep -qF "$START" "$DEST/CLAUDE.md"; then
