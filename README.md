@@ -6,46 +6,59 @@ the protocol for running them, the skills they use, and opt-in guardrails for pr
 | Plugin | What it bundles | Install it |
 |---|---|---|
 | `harness` | `bob-the-builder` and `felix-the-fixer` subagents, the `protocol` skill (how to run them and pick their models), and the `caveman`, `ponytail`, `thermo-nuclear-code-quality-review`, `wayfinder`, `grill-with-docs`, `grilling`, `domain-modeling`, `research` and `prototype` skills | Everywhere you work |
-| `harness-gates` | A `PreToolUse` hook that holds `git push` until `felix-the-fixer` has reviewed HEAD, and a `PostToolUse` hook that flags TODO markers and placeholder stubs as they are written. Depends on `harness`, so the reviewer always comes with the gate | Per project, on projects you ship |
+| `harness-gates` | A `PreToolUse` hook that holds `git push` until `felix-the-fixer` has reviewed HEAD, and a `PostToolUse` hook that flags TODO markers and placeholder stubs as they are written. Wired into a project as repository hooks. It asks for `harness:felix-the-fixer`, so install `harness` wherever that project is opened | Per project, on projects you ship |
 
 Everything is namespaced by plugin: `/harness:wayfinder`, subagent `harness:felix-the-fixer`.
 
 ## Install
 
-On your own machine:
+Where Claude Code runs decides how the plugins get there.
 
-```
-/plugin marketplace add rrichardtang/claude-config
-/plugin install harness@rrichardtang
+| Where | `harness` | `harness-gates` |
+|---|---|---|
+| Your machine (terminal, desktop app) | `/plugin marketplace add rrichardtang/claude-config`, then `/plugin install harness@rrichardtang`, once per machine | A hook in the project's `.claude/settings.json` (below) |
+| Claude Code on the web | The cloud environment's setup script, once per environment (below) | Same repository hook: it runs on the web too |
+| A teammate's machine | `extraKnownMarketplaces` + `enabledPlugins` in the project's `.claude/settings.json`, installed when they trust the folder | Same repository hook |
+
+Web sessions never install plugins a repository declares, and they skip plugin directories
+committed under `.claude/skills/`, because those wait for a trust dialog a web session never
+shows. What does reach a web session is anything installed before Claude Code starts (the setup
+script) and the repository's own `.claude/settings.json` hooks.
+
+**Setup script** (environment menu in the session title bar → Edit → Setup script). It runs
+before Claude Code launches and its result is cached for about seven days, so a version bump
+reaches web sessions when the cache rebuilds, or at once if you edit the script:
+
+```bash
+claude plugin marketplace add rrichardtang/claude-config || true
+claude plugin install harness@rrichardtang || true
 ```
 
-For a project, so teammates get it when they trust the repository, commit this to its
+**Push gate for one project.** Copy the scripts in, pinned, then wire them into that project's
 `.claude/settings.json`:
+
+```bash
+./vendor.sh /path/to/project            # -> .claude/vendor/harness-gates/
+```
 
 ```json
 {
-  "extraKnownMarketplaces": {
-    "rrichardtang": { "source": { "source": "github", "repo": "rrichardtang/claude-config" } }
-  },
-  "enabledPlugins": {
-    "harness@rrichardtang": true,
-    "harness-gates@rrichardtang": true
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [{ "type": "command",
+        "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/vendor/harness-gates/scripts/push-gate.sh\"" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Edit|Write", "hooks": [{ "type": "command",
+        "command": "node \"$CLAUDE_PROJECT_DIR/.claude/vendor/harness-gates/scripts/checkPractices.js\"" }] }
+    ]
   }
 }
 ```
 
-**Claude Code on the web does not install plugins a repository declares that way.** For a
-project you open from the web, commit a pinned copy instead:
-
-```bash
-./vendor.sh /path/to/project            # copies both plugins into .claude/skills/
-```
-
-A plugin under a repository's `.claude/skills/<name>/` loads as a skills-directory plugin
-(`harness@skills-dir`) straight from the clone, locally and on the web. The copy is pinned: it
-carries its `plugin.json` version and a `.vendored-from` file naming the commit it came from, and
-it changes only when someone re-runs `vendor.sh` and commits. Use one mechanism per project, not
-both, or the same plugin name loads twice.
+The gate lives in the repository rather than in anyone's install, so it applies to exactly the
+projects that opt in, for everyone who opens them, wherever they open them. Don't also enable
+`harness-gates@rrichardtang` in a project that has these hooks, or the gate runs twice.
 
 `INSTALL.md` walks a Claude Code session through all of this.
 
@@ -61,7 +74,8 @@ default branch.
 
 Each plugin's version is the `version` in its `.claude-plugin/plugin.json`. Installs update only
 when that string changes, so bump it on every change. `/plugin update harness@rrichardtang`
-pulls the new version; vendored copies update when `vendor.sh` is re-run.
+pulls the new version; the setup script picks it up when the environment cache rebuilds;
+vendored gate copies update when `vendor.sh` is re-run.
 
 ## Where the skills come from
 

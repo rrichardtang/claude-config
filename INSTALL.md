@@ -14,25 +14,30 @@ Two plugins from this repository's marketplace, `rrichardtang`:
 | Plugin | Contents | Where it belongs |
 |---|---|---|
 | `harness` | `harness:bob-the-builder`, `harness:felix-the-fixer`, the `harness:protocol` skill, nine working skills | Every project |
-| `harness-gates` | Push-review gate and TODO/stub check, as plugin hooks. Pulls in `harness` | Projects you ship; skip throwaways, since the gate will block you |
+| `harness-gates` | Push-review gate and TODO/stub check. Wired into a project as repository hooks (step 3), not installed | Projects you ship; skip throwaways, since the gate will block you |
 
 Nothing is written into `~/.claude/CLAUDE.md` or copied into `~/.claude/skills/`. The protocol
 that used to be a `CLAUDE.md` block is the `harness:protocol` skill, which loads when a session is
 about to spawn one of the agents, pick a model, or push.
 
-## First: will this repository be opened from Claude Code on the web?
+## First: where does Claude Code run?
 
-A web session starts from a fresh clone. It does not install plugins a repository declares in
-`.claude/settings.json`, and it has none of your local `~/.claude/`. What it does load is anything
-committed under the repository's `.claude/`, including plugin directories under
-`.claude/skills/`. So:
+A web session starts from a fresh clone with an empty `~/.claude/`. It does not install plugins a
+repository declares in `.claude/settings.json`, and it skips plugin directories committed under
+`.claude/skills/`, because they wait for a trust dialog a web session never shows. Two things do
+reach it: whatever the cloud environment's setup script installs before Claude Code starts, and
+the repository's own `.claude/settings.json` hooks.
 
-- **Opened from the web (or both):** do step 2 (vendor).
-- **Local only:** do step 1 (marketplace), and step 3 if the project should carry it for teammates.
+```bash
+[ -n "${CLAUDE_CODE_REMOTE:-}" ] && echo "web session" || echo "local machine"
+```
 
-Never combine step 2 with step 3 in one repository: the same plugin name would load twice.
+- **Local machine:** step 1. Step 2 as well if teammates should get the harness from the repo.
+- **Web session:** step 1 cannot stick (the container is discarded). Tell the user to add the
+  setup script in step 1b; you cannot edit environment settings yourself.
+- **Either, for a project you ship:** step 3.
 
-## Step 1: Install on this machine
+## Step 1: Install `harness` on this machine
 
 In a terminal session:
 
@@ -44,32 +49,24 @@ In a terminal session:
 Verify: `claude plugin list` shows `harness@rrichardtang` as enabled, and asking the session for
 its subagents lists `harness:bob-the-builder` and `harness:felix-the-fixer`.
 
-## Step 2: Vendor a pinned copy into the repository
+### Step 1b: Install `harness` in a cloud environment
 
-From a checkout of this repository:
+The user adds this to the environment's setup script (environment menu in the session title bar →
+Edit → Setup script). It runs as root before Claude Code launches, so the plugin is installed at
+user scope, which needs no trust dialog:
 
 ```bash
-./vendor.sh /path/to/project                   # harness + harness-gates
-./vendor.sh /path/to/project harness           # harness only
+claude plugin marketplace add rrichardtang/claude-config || true
+claude plugin install harness@rrichardtang || true
 ```
 
-This copies each plugin to `/path/to/project/.claude/skills/<plugin>/` with a `.vendored-from`
-file naming the commit. If the project's `.gitignore` ignores `.claude/`, add an exception so the
-copies commit:
+`|| true` keeps a network blip from failing the session's start (a setup script that exits
+non-zero stops the session), so check the result rather than trusting the script. The
+environment is cached for about seven days, so a new plugin version reaches web sessions when
+the cache rebuilds; editing the script rebuilds it at once. Verify in a new web session:
+`claude plugin list` shows `harness@rrichardtang`.
 
-```
-.claude/*
-!.claude/settings.json
-!.claude/skills/
-```
-
-Check with `git check-ignore -v .claude/skills/harness/.claude-plugin/plugin.json` (no output
-means it will commit), then commit. After the workspace is trusted, `claude plugin list` in the
-project shows `harness@skills-dir` as loaded.
-
-To upgrade, re-run `vendor.sh` from a newer checkout and commit. The diff is the upgrade.
-
-## Step 3: Declare it for a local team
+## Step 2: Declare `harness` for a local team
 
 Merge into the project's `.claude/settings.json`; don't overwrite other keys:
 
@@ -79,20 +76,57 @@ Merge into the project's `.claude/settings.json`; don't overwrite other keys:
     "rrichardtang": { "source": { "source": "github", "repo": "rrichardtang/claude-config" } }
   },
   "enabledPlugins": {
-    "harness@rrichardtang": true,
-    "harness-gates@rrichardtang": true
+    "harness@rrichardtang": true
   }
 }
 ```
 
-A teammate who trusts the folder gets the marketplace added and both plugins installed.
+A teammate who trusts the folder gets the marketplace added and `harness` installed. This does
+nothing on the web; step 1b covers that.
 
-## The push gate
+## Step 3: Wire the push gate into a project
 
-`harness-gates` blocks a `git push` until a receipt for the exact HEAD commit exists. The block
-message names the command that writes it; run that as its own command, after
-`harness:felix-the-fixer` has reviewed the diff. Without Node, the gate blocks any command that
-mentions a git push rather than letting it through.
+From a checkout of this repository:
+
+```bash
+./vendor.sh /path/to/project            # copies harness-gates to .claude/vendor/harness-gates/
+```
+
+Then merge these hooks into the project's `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [{ "type": "command",
+        "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/vendor/harness-gates/scripts/push-gate.sh\"" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Edit|Write", "hooks": [{ "type": "command",
+        "command": "node \"$CLAUDE_PROJECT_DIR/.claude/vendor/harness-gates/scripts/checkPractices.js\"" }] }
+    ]
+  }
+}
+```
+
+If the project's `.gitignore` ignores `.claude/`, add exceptions so both commit:
+
+```
+.claude/*
+!.claude/settings.json
+!.claude/vendor/
+```
+
+Check with `git check-ignore -v .claude/settings.json .claude/vendor/harness-gates/scripts/push-gate.sh`
+(no output means both will commit), then commit. Don't also enable `harness-gates@rrichardtang`
+in this project, or the gate runs twice. The copy's own `hooks/hooks.json` is unused here; the
+project's `.claude/settings.json` is the wiring. To upgrade, re-run `vendor.sh` from a newer checkout
+and commit; the diff is the upgrade.
+
+The gate blocks a `git push` until a receipt for the exact HEAD commit exists. The block message
+names the command that writes it; run that as its own command, after `harness:felix-the-fixer`
+has reviewed the diff. Without Node, the gate blocks any command that mentions a git push rather
+than letting it through.
 
 It is a nudge, not enforcement. Anyone can write the receipt, and it stays inside the clone's
 `.git/`. For enforcement, turn on branch protection for the default branch on GitHub: require a
