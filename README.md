@@ -7,6 +7,7 @@ the protocol for running them, the skills they use, and opt-in guardrails for pr
 |---|---|---|
 | `harness` | `bob-the-builder` and `felix-the-fixer` subagents, the `protocol` skill (how to run them and pick their models), and the `caveman`, `ponytail`, `thermo-nuclear-code-quality-review`, `wayfinder`, `grill-with-docs`, `grilling`, `domain-modeling`, `research` and `prototype` skills | Everywhere you work |
 | `harness-gates` | A `PreToolUse` hook that holds `git push` until `felix-the-fixer` has reviewed HEAD, and a `PostToolUse` hook that flags TODO markers and placeholder stubs as they are written. Wired into a project as repository hooks. It asks for `harness:felix-the-fixer`, so install `harness` wherever that project is opened | Per project, on projects you ship |
+| `explain-to-a-baby` | An output style that makes every reply three short plain-English parts (What changed, Why?, What's next), switched on as soon as the plugin is installed, plus a skill to apply it on demand | Wherever you want replies written that way |
 
 Everything is namespaced by plugin: `/harness:wayfinder`, subagent `harness:felix-the-fixer`.
 
@@ -32,6 +33,7 @@ reaches web sessions when the cache rebuilds, or at once if you edit the script:
 ```bash
 claude plugin marketplace add rrichardtang/claude-config || true
 claude plugin install harness@rrichardtang || true
+claude plugin install explain-to-a-baby@rrichardtang || true    # optional
 ```
 
 **Push gate for one project.** Copy the scripts in, pinned, then wire them into that project's

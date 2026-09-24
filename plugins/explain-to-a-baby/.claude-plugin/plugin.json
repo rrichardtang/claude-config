@@ -1,0 +1,7 @@
+{
+  "name": "explain-to-a-baby",
+  "version": "1.0.0",
+  "description": "Every reply in three short parts, What changed, Why?, What's next, in plain English.",
+  "author": { "name": "rrichardtang" },
+  "repository": "https://github.com/rrichardtang/claude-config"
+}

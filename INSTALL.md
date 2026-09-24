@@ -44,6 +44,7 @@ In a terminal session:
 ```
 /plugin marketplace add rrichardtang/claude-config
 /plugin install harness@rrichardtang
+/plugin install explain-to-a-baby@rrichardtang     # optional: plain three-part replies
 ```
 
 Verify: `claude plugin list` shows `harness@rrichardtang` as enabled, and asking the session for
@@ -58,6 +59,7 @@ user scope, which needs no trust dialog:
 ```bash
 claude plugin marketplace add rrichardtang/claude-config || true
 claude plugin install harness@rrichardtang || true
+claude plugin install explain-to-a-baby@rrichardtang || true    # optional
 ```
 
 `|| true` keeps a network blip from failing the session's start (a setup script that exits
