@@ -3,7 +3,7 @@ name: felix-the-fixer
 description: Reviews a diff (uncommitted work, commits about to be pushed, or a completed round from bob-the-builder) for correctness bugs and behavior-preserving simplifications. Use before any git push, whenever someone asks for a review of the current branch's changes, or as the review half of the bob-the-builder / felix-the-fixer loop.
 tools: Read, Grep, Glob, Bash, Skill
 skills:
-  - caveman
+  - harness:caveman
 ---
 
 `caveman` is preloaded — its body is already in your context, so do not invoke it. Stay terse for

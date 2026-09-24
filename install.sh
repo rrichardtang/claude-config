@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# LEGACY. The supported install is the `harness` plugin from this repo's marketplace (see
+# README.md). This copy-based sync stays only until every project that vendors
+# hooks/session-start.sh has moved to the plugin. It reads the plugin's files, so there is one
+# source of truth, and strips the plugin namespace, since copies under ~/.claude/ load bare.
+#
 # Syncs this repo's skills/agents/CLAUDE.md into ~/.claude/, and wires itself to re-run on every
 # session start so the sync is self-refreshing across every project. Safe to re-run: skills and
 # agents are copied wholesale (they live in a namespace this repo owns outright), but
@@ -8,19 +13,23 @@
 set -euo pipefail
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLUGIN="$SRC/plugins/harness"
 DEST="${CLAUDE_HOME:-$HOME/.claude}"
 START='<!-- claude-config:start (managed by rrichardtang/claude-config, do not edit by hand) -->'
 END='<!-- claude-config:end -->'
 
 mkdir -p "$DEST/skills" "$DEST/agents"
 
-for skill in "$SRC"/skills/*/; do
+# `protocol` is not copied as a skill: here it becomes the ~/.claude/CLAUDE.md block below.
+for skill in "$PLUGIN"/skills/*/; do
   name="$(basename "$skill")"
+  [ "$name" = protocol ] && continue
   rm -rf "$DEST/skills/$name"
   cp -r "$skill" "$DEST/skills/$name"
 done
-cp "$SRC/agents/bob-the-builder.md" "$DEST/agents/bob-the-builder.md"
-cp "$SRC/agents/felix-the-fixer.md" "$DEST/agents/felix-the-fixer.md"
+for agent in bob-the-builder felix-the-fixer; do
+  sed 's/harness://g' "$PLUGIN/agents/$agent.md" > "$DEST/agents/$agent.md"
+done
 
 # Self-refresh: install the bootstrap and register it as a user-level SessionStart hook, so every
 # future session in every project re-runs this sync before doing any work. Only this repo's own
@@ -49,7 +58,10 @@ else
   echo "claude-config: jq not found, skipping self-refresh hook registration" >&2
 fi
 
-BLOCK=$(printf '%s\n%s\n%s\n' "$START" "$(cat "$SRC/CLAUDE.md")" "$END")
+# The protocol skill minus its frontmatter, with the plugin root pointed at the copies above.
+PROTOCOL=$(awk 'NR == 1 && $0 == "---" { skipping = 1; next } skipping && $0 == "---" { skipping = 0; next } !skipping' \
+  "$PLUGIN/skills/protocol/SKILL.md" | sed "s|\${CLAUDE_PLUGIN_ROOT}|$DEST|g")
+BLOCK=$(printf '%s\n%s\n%s\n' "$START" "$PROTOCOL" "$END")
 
 if [ -f "$DEST/CLAUDE.md" ] && grep -qF "$START" "$DEST/CLAUDE.md"; then
   # Replace the existing managed block in place, leaving anything else in the file untouched.
@@ -68,5 +80,5 @@ else
   { [ -f "$DEST/CLAUDE.md" ] && printf '\n'; printf '%s\n' "$BLOCK"; } >> "$DEST/CLAUDE.md"
 fi
 
-skill_count=$(find "$SRC/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+skill_count=$(find "$PLUGIN/skills" -mindepth 1 -maxdepth 1 -type d ! -name protocol | wc -l | tr -d ' ')
 echo "claude-config: synced $skill_count skills, bob-the-builder, felix-the-fixer, and CLAUDE.md into $DEST"

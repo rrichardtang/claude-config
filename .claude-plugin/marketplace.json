@@ -1,0 +1,19 @@
+{
+  "name": "rrichardtang",
+  "description": "rrichardtang's Claude Code harness: the bob/felix build-and-review subagents, their skills, and opt-in push gates.",
+  "owner": {
+    "name": "rrichardtang"
+  },
+  "plugins": [
+    {
+      "name": "harness",
+      "source": "./plugins/harness",
+      "description": "bob-the-builder and felix-the-fixer subagents, the protocol for running them, and the planning and review skills they use."
+    },
+    {
+      "name": "harness-gates",
+      "source": "./plugins/harness-gates",
+      "description": "Opt-in hooks for projects you ship: hold git push until felix-the-fixer has reviewed HEAD, and flag TODO markers or placeholder stubs as they are written."
+    }
+  ]
+}

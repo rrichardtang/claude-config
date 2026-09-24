@@ -1,0 +1,7 @@
+{
+  "name": "claude-config",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  }
+}
