@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-# Copies plugins from this marketplace into a project's .claude/skills/, where Claude Code loads
-# each one as a skills-directory plugin straight from the clone. That is the one way a plugin
-# reaches a Claude Code web session from the repository itself: a web session does not install
-# plugins a repository declares under enabledPlugins. The copy is pinned to the version in its
-# plugin.json and to the commit recorded beside it; upgrading is re-running this and committing.
+# Copies a plugin from this marketplace into a project's .claude/vendor/<plugin>/, pinned to the
+# version in its plugin.json and to the commit recorded beside it. Upgrading is re-running this
+# and committing, so the diff is the upgrade.
 #
-#   ./vendor.sh <project-dir> [plugin ...]     # default: harness harness-gates
+# This exists for harness-gates. Its hooks have to be wired into the project's own
+# .claude/settings.json, because that is the one place a hook reaches both local and web sessions:
+# a web session installs no plugins the repository declares, and skips plugin directories under
+# .claude/skills/ because it never shows the trust dialog they wait for. .claude/vendor/ is not a
+# plugin location, so the copy is only ever run through those settings hooks, never twice.
+#
+#   ./vendor.sh <project-dir> [plugin ...]     # default: harness-gates
 set -euo pipefail
 
 TARGET="${1:?usage: vendor.sh <project-dir> [plugin ...]}"
@@ -18,10 +22,10 @@ if [ -n "$(git -C "$SRC" status --porcelain -- plugins)" ]; then
   exit 1
 fi
 
-[ $# -gt 0 ] || set -- harness harness-gates
+[ $# -gt 0 ] || set -- harness-gates
 for plugin in "$@"; do
   [ -d "$SRC/plugins/$plugin" ] || { echo "vendor.sh: no plugin named $plugin" >&2; exit 1; }
-  dest="$TARGET/.claude/skills/$plugin"
+  dest="$TARGET/.claude/vendor/$plugin"
   rm -rf "$dest"
   mkdir -p "$(dirname "$dest")"
   cp -r "$SRC/plugins/$plugin" "$dest"
