@@ -14,6 +14,11 @@
       "name": "harness-gates",
       "source": "./plugins/harness-gates",
       "description": "Opt-in hooks for projects you ship: hold git push until felix-the-fixer has reviewed HEAD, and flag TODO markers or placeholder stubs as they are written."
+    },
+    {
+      "name": "explain-to-a-baby",
+      "source": "./plugins/explain-to-a-baby",
+      "description": "Every reply in three short parts, What changed, Why?, What's next, in plain English."
     }
   ]
 }
