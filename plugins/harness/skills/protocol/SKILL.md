@@ -22,8 +22,9 @@ you ask for it directly.
 Preloading (`skills:` in a subagent's frontmatter) injects a skill's full body into that
 subagent's context at startup, which is stronger than letting it call `Skill(...)` mid-run: the
 skill shapes the work from the first token instead of after the agent has already decided how to
-approach it, and it cannot be skipped. `bob-the-builder` preloads `ponytail` for exactly this
-reason — clean code comes from constraints applied while writing, not from an audit afterwards.
+approach it, and it cannot be skipped. Both agents preload `ponytail` for exactly this
+reason: `bob-the-builder` writes to it, and `felix-the-fixer` reviews against it, so the builder
+and the reviewer share one bar for "simple enough".
 Note that a skill marked `disable-model-invocation: true` can be neither preloaded nor invoked by
 an agent; that flag makes a skill user-only, so never put it on one an agent is meant to use.
 

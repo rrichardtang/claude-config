@@ -163,4 +163,4 @@ inherits the caller's model, so pass `model` on every spawn.
 
 **Subagents don't inherit skills.** Each agent preloads what it needs by namespaced name in its
 frontmatter: `bob-the-builder` preloads `harness:ponytail` and `harness:caveman`,
-`felix-the-fixer` preloads `harness:caveman`.
+`felix-the-fixer` preloads the same two.
